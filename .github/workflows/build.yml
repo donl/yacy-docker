@@ -30,7 +30,7 @@ jobs:
         include:
           # x86_64 variants
           - dockerfile: docker/Dockerfile
-            tag: debian
+            tag: ubuntu
             platform: linux/amd64
           - dockerfile: docker/Dockerfile.alpine
             tag: alpine
@@ -83,7 +83,7 @@ jobs:
             # Variant tag (e.g., alpine, debian, aarch64, armv7)
             type=raw,value=${{ matrix.tag }}
             # Latest = debian variant
-            type=raw,value=latest,enable=${{ matrix.tag == 'debian' }}
+            type=raw,value=latest,enable=${{ matrix.tag == 'ubuntu' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6

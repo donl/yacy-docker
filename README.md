@@ -27,7 +27,7 @@ nano .env
 **Option A: Pull pre-built from GitHub Container Registry**
 ```bash
 docker pull ghcr.io/donl/yacy-docker:alpine    # x86_64, ~200MB
-docker pull ghcr.io/donl/yacy-docker:debian    # x86_64, ~500MB
+docker pull ghcr.io/donl/yacy-docker:ubuntu    # x86_64, ~500MB
 docker pull ghcr.io/donl/yacy-docker:aarch64   # ARM64 (Pi 4+)
 docker pull ghcr.io/donl/yacy-docker:armv7     # ARM32 (Pi 2/3)
 
