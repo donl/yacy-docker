@@ -22,15 +22,27 @@ nano .env
 # Required: Set YACY_DOMAIN=yacy.example.com
 ```
 
-### 2. Build Image
+### 2. Get Image
+
+**Option A: Pull pre-built from GitHub Container Registry**
 ```bash
-# Interactive build with version selection
+# Alpine (lightweight, recommended)
+docker pull ghcr.io/donl/yacy-docker:alpine
+docker tag ghcr.io/donl/yacy-docker:alpine yacy:latest
+
+# Debian (full-featured)
+docker pull ghcr.io/donl/yacy-docker:debian
+docker tag ghcr.io/donl/yacy-docker:debian yacy:latest
+```
+
+**Option B: Build locally (custom version selection)**
+```bash
 ./bin/build.sh
 
 # Prompts you to select:
 # 1. Architecture (Debian/Ubuntu, Alpine, ARM64, ARM32)
 # 2. Version (releases, commits, or master branch)
-# 3. Builds tagged image (e.g., yacy:alpine-master)
+# build.sh will prompt for version selection interactively
 ```
 
 ### 3. Choose Deployment
