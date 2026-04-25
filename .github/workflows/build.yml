@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       yacy_version:
-        description: 'YaCy version (tag, branch, or commit SHA)'
+        description: 'YaCy version (tag, branch, or "all" for all releases)'
         required: false
         default: 'master'
 
@@ -18,7 +18,31 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Discover which YaCy versions to build
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Determine versions to build
+        id: set-matrix
+        run: |
+          INPUT="${{ github.event.inputs.yacy_version || 'master' }}"
+
+          if [ "$INPUT" = "all" ]; then
+            # Fetch all release tags + master
+            TAGS=$(curl -s "https://api.github.com/repos/yacy/yacy_search_server/releases?per_page=10" \
+              | jq -r '.[].tag_name' 2>/dev/null)
+            VERSIONS=$(echo "$TAGS" | jq -Rsc 'split("\n") | map(select(length > 0)) + ["master"]')
+          else
+            VERSIONS=$(echo "[\"$INPUT\"]")
+          fi
+
+          echo "matrix=$VERSIONS" >> $GITHUB_OUTPUT
+          echo "Building versions: $VERSIONS"
+
   build:
+    needs: versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,16 +51,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # x86_64 variants
+        yacy_version: ${{ fromJson(needs.versions.outputs.matrix) }}
+        variant:
           - dockerfile: docker/Dockerfile
             tag: ubuntu
             platform: linux/amd64
           - dockerfile: docker/Dockerfile.alpine
             tag: alpine
             platform: linux/amd64
-
-          # ARM variants (built via QEMU emulation)
           - dockerfile: docker/Dockerfile.aarch64
             tag: aarch64
             platform: linux/arm64
@@ -50,7 +72,7 @@ jobs:
 
       - name: Set up QEMU (for ARM builds)
         uses: docker/setup-qemu-action@v3
-        if: matrix.platform != 'linux/amd64'
+        if: matrix.variant.platform != 'linux/amd64'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -62,17 +84,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine YaCy version
+      - name: Resolve version metadata
         id: version
         run: |
-          VERSION="${{ github.event.inputs.yacy_version || 'master' }}"
+          VERSION="${{ matrix.yacy_version }}"
           echo "yacy_version=$VERSION" >> $GITHUB_OUTPUT
           echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
-          # Get the commit SHA for the version
+          # Get commit SHA
           SHA=$(curl -s "https://api.github.com/repos/yacy/yacy_search_server/commits?sha=$VERSION&per_page=1" \
             | jq -r '.[0].sha[0:7] // empty' 2>/dev/null || echo "unknown")
           echo "yacy_sha=$SHA" >> $GITHUB_OUTPUT
+
+          # Clean version for tag (Release_1.941 -> 1.941)
+          CLEAN=$(echo "$VERSION" | sed 's/^Release_//')
+          echo "clean_version=$CLEAN" >> $GITHUB_OUTPUT
 
       - name: Generate tags
         id: meta
@@ -80,17 +106,19 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Variant tag (e.g., alpine, debian, aarch64, armv7)
-            type=raw,value=${{ matrix.tag }}
-            # Latest = debian variant
-            type=raw,value=latest,enable=${{ matrix.tag == 'ubuntu' }}
+            # version-variant (e.g., 1.941-alpine, master-ubuntu)
+            type=raw,value=${{ steps.version.outputs.clean_version }}-${{ matrix.variant.tag }}
+            # variant only for master (e.g., alpine, ubuntu)
+            type=raw,value=${{ matrix.variant.tag }},enable=${{ matrix.yacy_version == 'master' }}
+            # latest = master + ubuntu
+            type=raw,value=latest,enable=${{ matrix.yacy_version == 'master' && matrix.variant.tag == 'ubuntu' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: ${{ matrix.platform }}
+          file: ${{ matrix.variant.dockerfile }}
+          platforms: ${{ matrix.variant.platform }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -98,5 +126,5 @@ jobs:
             YACY_VERSION=${{ steps.version.outputs.yacy_version }}
             BUILD_DATE=${{ steps.version.outputs.build_date }}
             YACY_SHA=${{ steps.version.outputs.yacy_sha }}
-          cache-from: type=gha,scope=${{ matrix.tag }}
-          cache-to: type=gha,scope=${{ matrix.tag }},mode=max
+          cache-from: type=gha,scope=${{ matrix.variant.tag }}-${{ steps.version.outputs.clean_version }}
+          cache-to: type=gha,scope=${{ matrix.variant.tag }}-${{ steps.version.outputs.clean_version }},mode=max
