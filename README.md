@@ -201,12 +201,11 @@ yacy/
 │   ├── restore.sh            # Restore tool
 │   └── solr-init.sh          # Solr collection setup
 │
-├── docker/                    # Docker build context
+├── docker/                    # Dockerfiles
 │   ├── Dockerfile           # Ubuntu/Debian (default, 24-jdk, ~500MB)
-│   ├── Dockerfile.alpine    # Alpine (lightweight, 21-jdk, ~200MB) ⭐
+│   ├── Dockerfile.alpine    # Alpine (lightweight, 21-jdk, ~200MB)
 │   ├── Dockerfile.aarch64   # ARM64 (23-jdk, ~450MB)
-│   ├── Dockerfile.armv7     # ARM32 (11-jdk, ~350MB)
-│   └── .dockerignore        # Docker build exclusions
+│   └── Dockerfile.armv7     # ARM32 (11-jdk, ~350MB)
 │
 └── backups/                  # Backup archives (NOT committed)
     └── yacy_YYYYMMDD_HHMMSS.tar.gz
