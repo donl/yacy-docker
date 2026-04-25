@@ -69,7 +69,7 @@ docker compose logs -f yacy
 ### 5. Access YaCy
 - **Web Interface**: http://localhost:8090
 - **Initial Setup**: No default password (set on first login)
-- **With Traefik**: https://yacy.yourdomain.com
+- **With Traefik/Caddy**: https://yacy.yourdomain.com
 
 ### 6. Set Admin Password
 ```bash
@@ -285,7 +285,7 @@ docker compose logs --timestamps yacy
 # Via HTTP (local)
 http://localhost:8090
 
-# Via HTTPS (with Traefik)
+# Via HTTPS (with Traefik/Caddy)
 https://yacy.yourdomain.com
 
 # From container
