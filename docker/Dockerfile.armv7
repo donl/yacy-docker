@@ -11,9 +11,9 @@
 
 
 ## builder image
-# Java 11: LTS version compatible with ARM32; EOL Oct 2026
-# (Only LTS-compatible option available for ARM32 on this base)
-FROM arm32v7/openjdk:11-jdk AS builder
+# Java 11 LTS via Eclipse Temurin (maintained by Adoptium)
+# Java 11 is the highest LTS available for ARM32; EOL Oct 2026
+FROM arm32v7/eclipse-temurin:11-jdk AS builder
 
 # Install build dependencies early (cached, rarely changes)
 RUN for i in 1 2 3; do \
@@ -40,7 +40,7 @@ RUN git clone --depth 1 --branch ${YACY_VERSION} https://github.com/yacy/yacy_se
 
 
 ## final image
-FROM arm32v7/openjdk:11-jre AS app
+FROM arm32v7/eclipse-temurin:11-jre AS app
 
 # Install runtime dependencies early (cached, rarely changes)
 RUN for i in 1 2 3; do \
