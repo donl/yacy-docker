@@ -26,13 +26,13 @@ nano .env
 
 **Option A: Pull pre-built from GitHub Container Registry**
 ```bash
-# Alpine (lightweight, recommended)
-docker pull ghcr.io/donl/yacy-docker:alpine
-docker tag ghcr.io/donl/yacy-docker:alpine yacy:latest
+docker pull ghcr.io/donl/yacy-docker:alpine    # x86_64, ~200MB
+docker pull ghcr.io/donl/yacy-docker:debian    # x86_64, ~500MB
+docker pull ghcr.io/donl/yacy-docker:aarch64   # ARM64 (Pi 4+)
+docker pull ghcr.io/donl/yacy-docker:armv7     # ARM32 (Pi 2/3)
 
-# Debian (full-featured)
-docker pull ghcr.io/donl/yacy-docker:debian
-docker tag ghcr.io/donl/yacy-docker:debian yacy:latest
+# Tag for local use
+docker tag ghcr.io/donl/yacy-docker:alpine yacy:latest
 ```
 
 **Option B: Build locally (custom version selection)**

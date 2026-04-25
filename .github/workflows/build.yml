@@ -6,9 +6,14 @@ on:
     paths:
       - 'docker/**'
       - '.github/workflows/build.yml'
-  release:
-    types: [published]
-  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 6 * * 0'  # Weekly rebuild (Sunday 6 AM UTC)
+  workflow_dispatch:
+    inputs:
+      yacy_version:
+        description: 'YaCy version (tag, branch, or commit SHA)'
+        required: false
+        default: 'master'
 
 env:
   REGISTRY: ghcr.io
@@ -22,8 +27,10 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         include:
+          # x86_64 variants
           - dockerfile: docker/Dockerfile
             tag: debian
             platform: linux/amd64
@@ -31,9 +38,24 @@ jobs:
             tag: alpine
             platform: linux/amd64
 
+          # ARM variants (built via QEMU emulation)
+          - dockerfile: docker/Dockerfile.aarch64
+            tag: aarch64
+            platform: linux/arm64
+          - dockerfile: docker/Dockerfile.armv7
+            tag: armv7
+            platform: linux/arm/v7
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up QEMU (for ARM builds)
+        uses: docker/setup-qemu-action@v3
+        if: matrix.platform != 'linux/amd64'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -42,33 +64,41 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Determine YaCy version
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.yacy_version || 'master' }}"
+          echo "yacy_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+          # Get the commit SHA for the version
+          SHA=$(curl -s "https://api.github.com/repos/yacy/yacy_search_server/commits?sha=$VERSION&per_page=1" \
+            | jq -r '.[0].sha[0:7] // empty' 2>/dev/null || echo "unknown")
+          echo "yacy_sha=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Generate tags
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # For releases: use release tag
-            type=semver,pattern={{version}}
-            # Branch builds: variant name
+            # Variant tag (e.g., alpine, debian, aarch64, armv7)
             type=raw,value=${{ matrix.tag }}
-            # Latest tag on default variant (debian)
+            # Latest = debian variant
             type=raw,value=latest,enable=${{ matrix.tag == 'debian' }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            YACY_VERSION=master
-            BUILD_DATE=${{ github.event.created_at || '' }}
-            YACY_SHA=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            YACY_VERSION=${{ steps.version.outputs.yacy_version }}
+            BUILD_DATE=${{ steps.version.outputs.build_date }}
+            YACY_SHA=${{ steps.version.outputs.yacy_sha }}
+          cache-from: type=gha,scope=${{ matrix.tag }}
+          cache-to: type=gha,scope=${{ matrix.tag }},mode=max
