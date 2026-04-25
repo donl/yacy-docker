@@ -14,7 +14,7 @@ Separate Dockerfiles per platform because each needs different base images and J
 |---------|------|------|------|-------|
 | Dockerfile | eclipse-temurin:24-jdk-noble | 24 | ~500MB | Full apt ecosystem |
 | Dockerfile.alpine | eclipse-temurin:21-jdk-alpine | 21 | ~200MB | No wkhtmltopdf available |
-| Dockerfile.aarch64 | arm64v8/openjdk:23 | 23 | ~450MB | Raspberry Pi 4+, ARM cloud |
+| Dockerfile.aarch64 | eclipse-temurin:21-jdk-noble | 21 | ~450MB | Raspberry Pi 4+, ARM cloud |
 | Dockerfile.armv7 | arm32v7/openjdk:11 | 11 | ~350MB | Java 11 EOL Oct 2026 |
 
 A single multi-platform Dockerfile was considered but rejected -- different package managers (apt vs apk), different Java availability, and different optimization targets make separate files cleaner.

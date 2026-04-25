@@ -46,7 +46,7 @@ FROM arm32v7/openjdk:11-jre AS app
 RUN for i in 1 2 3; do \
       apt-get update && break || sleep 5; \
     done && \
-    apt-get install -y --no-install-recommends wkhtmltopdf xvfb ghostscript curl && \
+    apt-get install -y --no-install-recommends ghostscript curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Version args AFTER dependencies

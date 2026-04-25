@@ -82,7 +82,7 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "  ${CYAN}[1]${NC} Debian/Ubuntu       (eclipse-temurin:24-jdk-noble) ~500MB"
 echo -e "  ${CYAN}[2]${NC} Alpine Linux       (eclipse-temurin:21-jdk-alpine) ~200MB ⭐"
 echo -e "      └─ Note: No wkhtmltopdf (PDF rendering disabled)"
-echo -e "  ${CYAN}[3]${NC} ARM64 (aarch64)    (arm64v8/openjdk:23) ~450MB"
+echo -e "  ${CYAN}[3]${NC} ARM64 (aarch64)    (eclipse-temurin:21-jdk-noble) ~450MB"
 echo -e "  ${CYAN}[4]${NC} ARM32 (armv7)      (arm32v7/openjdk:11) ~350MB"
 echo ""
 
