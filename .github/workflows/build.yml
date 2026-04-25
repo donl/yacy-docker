@@ -6,8 +6,6 @@ on:
     paths:
       - 'docker/**'
       - '.github/workflows/build.yml'
-  schedule:
-    - cron: '0 6 * * 0'  # Weekly rebuild (Sunday 6 AM UTC)
   workflow_dispatch:
     inputs:
       yacy_version:
