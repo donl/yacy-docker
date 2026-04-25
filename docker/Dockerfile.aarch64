@@ -1,0 +1,86 @@
+# ARM64v8 Docker image for YaCy (Optimized for Caching)
+# Based on official: https://github.com/yacy/yacy_search_server/blob/master/docker/Dockerfile.aarch64
+#
+# Build with:
+#   docker build --build-arg YACY_VERSION=Release_9.902_202312262252 -t yacy:aarch64 -f Dockerfile.aarch64 .
+#   DOCKER_BUILDKIT=1 docker build ... (for better caching)
+#
+# Run with:
+#   docker run -d --name yacy -p 8090:8090 -p 8443:8443 -v yacy_data:/opt/yacy_search_server/DATA \
+#     --log-opt max-size=200m --log-opt max-file=2 yacy:aarch64
+
+
+## builder image
+# Java 23: Balanced version with good ARM64 support
+FROM arm64v8/openjdk:23-jdk-slim-bookworm AS builder
+
+# Install build dependencies early (cached, rarely changes)
+RUN for i in 1 2 3; do \
+      apt-get update && break || sleep 5; \
+    done && \
+    apt-get install -y --no-install-recommends ant git curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Version args AFTER dependencies (cache stays valid for same version)
+ARG YACY_VERSION=master
+ARG BUILD_DATE
+
+# Clone, build, configure in single layer
+WORKDIR /opt
+RUN git clone --depth 1 --branch ${YACY_VERSION} https://github.com/yacy/yacy_search_server.git yacy_search_server && \
+    cd yacy_search_server && \
+    ant clean all dist && \
+    test -f startYACY.sh && test -d build && \
+    # IMPORTANT: Admin password is NOT set in the image. Users must set via:
+    # 1. Web UI on first login (http://localhost:8090) or
+    # 2. Use: bin/set-password.sh [container] [password]
+    sed -i "/adminAccountForLocalhost=/c\adminAccountForLocalhost=false" defaults/yacy.init && \
+    sed -i "/server.https=false/c\server.https=true" defaults/yacy.init
+
+
+## final image
+FROM arm64v8/openjdk:23-jre-slim-bookworm AS app
+
+# Install runtime dependencies early (cached, rarely changes)
+RUN for i in 1 2 3; do \
+      apt-get update && break || sleep 5; \
+    done && \
+    apt-get install -y --no-install-recommends wkhtmltopdf xvfb ghostscript curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Version args AFTER dependencies
+ARG YACY_VERSION=master
+ARG YACY_SHA=unknown
+ARG BUILD_DATE
+
+# OCI image labels
+LABEL org.opencontainers.image.source="https://github.com/yacy/yacy_search_server" \
+      org.opencontainers.image.version="${YACY_VERSION} (${YACY_SHA})" \
+      org.opencontainers.image.description="YaCy Search Server (ARM64)" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      maintainer="Michael Peter Christen <mc@yacy.net>"
+
+# Setup user and copy YaCy
+RUN adduser --system --group --no-create-home --disabled-password yacy
+COPY --chown=yacy:yacy --from=builder /opt/yacy_search_server /opt/yacy_search_server
+
+# Environment configuration
+ENV YACY_VERSION=${YACY_VERSION} \
+    JAVA_OPTS="-Xmx2048m -Xms512m" \
+    TZ=UTC
+
+# Expose HTTP and HTTPS default ports
+EXPOSE 8090 8443
+
+# Set data volume
+VOLUME ["/opt/yacy_search_server/DATA"]
+
+# Health check via YaCy status API
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8090/ || exit 1
+
+# Run as non-root user
+USER yacy
+
+# Start YaCy as foreground process
+CMD ["/bin/sh","/opt/yacy_search_server/startYACY.sh","-f"]

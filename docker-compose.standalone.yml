@@ -1,0 +1,57 @@
+# YaCy Docker Compose - Standalone Mode (No Reverse Proxy)
+#
+# This is a minimal configuration for local-only YaCy deployment.
+# No external reverse proxy required.
+# Suitable for: development, testing, local-only deployments.
+#
+# Usage:
+#   docker compose -f docker-compose.standalone.yml up -d
+#
+# Access: http://localhost:8090
+
+services:
+  yacy:
+    image: yacy:latest  # Built by: ./bin/build.sh
+    container_name: yacy
+    restart: unless-stopped
+
+    # YaCy configuration
+    environment:
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx2048m -Xms512m}
+      TZ: ${TZ:-UTC}
+
+    # Port bindings (localhost only)
+    ports:
+      - "127.0.0.1:8090:8090"
+      - "127.0.0.1:8443:8443"
+
+    volumes:
+      - yacy_data:/opt/yacy_search_server/DATA
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+    # Health check
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8090/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Logging
+    logging:
+      driver: json-file
+      options:
+        max-size: 200m
+        max-file: "2"
+
+volumes:
+  yacy_data:

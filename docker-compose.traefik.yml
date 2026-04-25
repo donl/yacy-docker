@@ -1,0 +1,87 @@
+# Generic YaCy Docker Compose - Traefik Integration
+#
+# This is a generic Traefik configuration that works with any external Traefik setup.
+# It's designed to be agnostic and reusable across different infrastructure.
+#
+# Usage:
+#   docker compose -f docker-compose.traefik.yml up -d
+#
+# Requirements:
+#   - External Traefik instance with 'traefik-network' network
+#     (Create: docker network create traefik-network)
+#   - YACY_DOMAIN environment variable set
+#   - Traefik configured with Let's Encrypt cert resolver
+
+services:
+  yacy:
+    image: yacy:latest  # Built by: ./bin/build.sh
+    container_name: yacy
+    restart: unless-stopped
+
+    # YaCy configuration
+    environment:
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx2048m -Xms512m}
+      TZ: ${TZ:-UTC}
+
+    networks:
+      - default
+      - traefik-network
+
+    volumes:
+      - yacy_data:/opt/yacy_search_server/DATA
+
+    expose:
+      - "8090"
+      - "8443"
+
+    # Traefik labels - Generic configuration
+    labels:
+      # Enable Traefik routing
+      traefik.enable: "true"
+      traefik.docker.network: traefik-network
+
+      # HTTP router - Route based on hostname
+      traefik.http.routers.yacy.rule: Host(`${YACY_DOMAIN}`)
+      traefik.http.routers.yacy.entrypoints: web,websecure
+
+      # HTTPS configuration
+      traefik.http.routers.yacy.tls: "true"
+      traefik.http.routers.yacy.tls.certresolver: letsencrypt
+
+      # Service configuration
+      traefik.http.services.yacy.loadbalancer.server.port: "8090"
+      traefik.http.services.yacy.loadbalancer.server.scheme: http
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+    # Health check
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8090/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Logging
+    logging:
+      driver: json-file
+      options:
+        max-size: 200m
+        max-file: "2"
+
+volumes:
+  yacy_data:
+
+networks:
+  default:
+  traefik-network:
+    external: true
+    # Requires: docker network create traefik-network

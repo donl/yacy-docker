@@ -1,0 +1,86 @@
+# YaCy Docker Compose - Caddy Reverse Proxy Integration
+#
+# This configuration integrates YaCy with Caddy reverse proxy.
+# Caddy provides automatic HTTPS via Let's Encrypt with simpler configuration.
+#
+# Usage:
+#   docker compose -f docker-compose.caddy.yml up -d
+#
+# Requirements:
+#   - External Caddy instance with 'caddy-network' network
+#     (Create: docker network create caddy-network)
+#   - YACY_DOMAIN environment variable set
+#   - Caddy configured with docker-compose discovery/labels or Caddyfile
+
+services:
+  yacy:
+    image: yacy:latest  # Built by: ./bin/build.sh
+    container_name: yacy
+    restart: unless-stopped
+
+    # YaCy configuration
+    environment:
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx2048m -Xms512m}
+      TZ: ${TZ:-UTC}
+
+    networks:
+      - default
+      - caddy-network
+
+    volumes:
+      - yacy_data:/opt/yacy_search_server/DATA
+
+    expose:
+      - "8090"
+      - "8443"
+
+    # Caddy labels for automatic configuration
+    # These labels are used by Caddy's Docker provider
+    # See: https://github.com/lucaslorentz/caddy-docker-proxy
+    labels:
+      # Service discovery - hostname to route
+      caddy: "${YACY_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 8090}}"
+
+      # Security headers (use numbered keys to avoid YAML duplicate key issues)
+      caddy.header.0: "X-Frame-Options 'SAMEORIGIN'"
+      caddy.header.1: "X-Content-Type-Options 'nosniff'"
+      caddy.header.2: "X-XSS-Protection '1; mode=block'"
+      caddy.header.3: "Referrer-Policy 'strict-origin-when-cross-origin'"
+
+      # TLS configuration (Caddy handles HTTPS automatically)
+      # caddy.tls.on_demand: "true"  # Enable on-demand TLS
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+    # Health check
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8090/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Logging
+    logging:
+      driver: json-file
+      options:
+        max-size: 200m
+        max-file: "2"
+
+volumes:
+  yacy_data:
+
+networks:
+  default:
+  caddy-network:
+    external: true
+    # Requires: docker network create caddy-network

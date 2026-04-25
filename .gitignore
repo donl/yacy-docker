@@ -1,0 +1,59 @@
+# Environment configuration (NEVER commit secrets)
+# .env and .env.* are runtime files (gitignored)
+# _underscore prefixed files are templates (committed)
+.env
+.env.*
+
+# Docker compose (deployment-specific, created by user from a template)
+docker-compose.yml
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Persistent data (NEVER commit)
+data/
+DATA/
+*.db
+*.sqlite
+
+# Logs (NEVER commit)
+logs/
+*.log
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# AI coding tools
+.claude/
+.codex/
+.gemini/
+.cursor/
+.aider*
+.continue/
+.copilot/
+.codeium/
+.windsurf/
+.tabnine/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Backups (stored separately)
+*.backup
+*.bak
+
+# Backups
+backups/
+
+# Build artifacts
+docker/build-cache/
